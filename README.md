@@ -85,13 +85,13 @@ Idempotency-Key: <uuid>
 ## Screenshots
 
 ### Dashboard
-![Dashboard](images/dashboard.png)
+![Dashboard](dashboard.png)
 
 ### Create Transaction
-![Create Transaction](images/transaction-form.png)
+![Create Transaction](transaction-form.png)
 
 ### Transaction History
-![History](images/transaction-history.png)
+![History](transaction-history.png)
 
 ---
 
