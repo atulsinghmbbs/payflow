@@ -1,0 +1,153 @@
+<!-- dashboard.component.html -->
+<div class="dashboard">
+
+  <!-- ── Account Selector Bar ──────────────────────────────────────────────── -->
+  <div class="account-bar">
+    <div class="account-bar-left">
+      <span class="section-label">Viewing account</span>
+      <!-- <select class="account-select" (change)="onAccountChange($any($event.target).value)">
+        <option *ngFor="let a of mockAccounts" [value]="a.id">{{ a.label }}</option>
+      </select> -->
+      <select class="account-select" (change)="onAccountChange($any($event.target).value)">
+  <option *ngFor="let a of accounts" [value]="a.id">{{ a.label }}</option>
+</select>
+    </div>
+    <button class="btn btn-primary" (click)="navigateToNew()">
+      + New Transaction
+    </button>
+  </div>
+
+  <!-- ── Balance Cards ─────────────────────────────────────────────────────── -->
+  <div class="cards-grid">
+
+    <!-- Available Balance -->
+    <div class="card card-primary">
+      <div class="card-label">Available Balance</div>
+      <div class="card-amount" *ngIf="!isLoading; else skelAmount">
+        {{ formatCurrency(account?.availableBalance ?? 0) }}
+      </div>
+      <div class="card-meta">{{ account?.currency }} · {{ account?.ownerName }}</div>
+      <div class="card-status">
+        <span class="dot dot-green"></span>
+        {{ account?.status ?? 'ACTIVE' }}
+      </div>
+    </div>
+
+    <!-- Ledger Balance -->
+    <div class="card">
+      <div class="card-label">Ledger Balance</div>
+      <div class="card-amount neutral" *ngIf="!isLoading; else skelAmount">
+        {{ formatCurrency(account?.balance ?? 0) }}
+      </div>
+      <div class="card-meta">Total including holds</div>
+    </div>
+
+    <!-- Account Number -->
+    <div class="card">
+      <div class="card-label">Account Number</div>
+      <div class="card-mono" *ngIf="!isLoading; else skelText">
+        {{ account?.accountNumber ?? '—' }}
+      </div>
+      <div class="card-meta">{{ account?.id }}</div>
+    </div>
+
+    <!-- Transaction Count -->
+    <div class="card">
+      <div class="card-label">Total Transactions</div>
+      <div class="card-amount neutral" *ngIf="!isLoadingTxns; else skelAmount">
+        {{ totalTransactions }}
+      </div>
+      <div class="card-meta">All time</div>
+    </div>
+
+  </div>
+
+  <!-- ── Recent Transactions ────────────────────────────────────────────────── -->
+  <div class="panel">
+    <div class="panel-header">
+      <div>
+        <h3 class="panel-title">Recent Transactions</h3>
+        <p class="panel-sub">Last 10 transactions for this account</p>
+      </div>
+      <div class="panel-actions">
+        <button class="btn btn-ghost" (click)="loadDashboard()">↻ Refresh</button>
+        <button class="btn btn-ghost" (click)="navigateToHistory()">View All</button>
+      </div>
+    </div>
+
+    <!-- Loading skeleton -->
+    <ng-container *ngIf="isLoadingTxns">
+      <div class="skeleton-row" *ngFor="let i of [1,2,3,4,5]"></div>
+    </ng-container>
+
+    <!-- Empty state -->
+    <div class="empty-state" *ngIf="!isLoadingTxns && recentTransactions.length === 0">
+      <div class="empty-icon">📋</div>
+      <div class="empty-title">No transactions yet</div>
+      <div class="empty-sub">Initiate your first transaction to get started</div>
+      <button class="btn btn-primary" (click)="navigateToNew()">+ New Transaction</button>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap" *ngIf="!isLoadingTxns && recentTransactions.length > 0">
+      <table>
+        <thead>
+          <tr>
+            <th>Reference</th>
+            <th>Type</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Time</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let txn of recentTransactions">
+            <td>
+              <span class="ref-code">{{ txn.referenceId }}</span>
+            </td>
+            <td>
+              <span class="type-badge type-{{ txn.type }}">{{ txn.type }}</span>
+            </td>
+            <td>
+              <span [class.amount-debit]="isDebit(txn.type)"
+                    [class.amount-credit]="!isDebit(txn.type)">
+                {{ isDebit(txn.type) ? '−' : '+' }}{{ formatCurrency(txn.amount, txn.currency) }}
+              </span>
+            </td>
+            <td>
+              <span class="status-pill status-{{ txn.status }}">
+                {{ txn.status }}
+              </span>
+            </td>
+            <td class="time-col">{{ txn.createdAt | date:'MMM d, h:mm a' }}</td>
+            <td>
+              <button
+                *ngIf="txn.status === 'COMPLETED'"
+                class="btn btn-xs btn-danger-ghost"
+                (click)="reverseTransaction(txn.id, $event)"
+                title="Reverse this transaction"
+              >
+                Reverse
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="view-all-bar" *ngIf="totalTransactions > 10">
+      <button class="btn btn-ghost full-width" (click)="navigateToHistory()">
+        View all {{ totalTransactions }} transactions →
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Skeletons ─────────────────────────────────────────────────────────────── -->
+<ng-template #skelAmount>
+  <div class="skel skel-amount"></div>
+</ng-template>
+<ng-template #skelText>
+  <div class="skel skel-text"></div>
+</ng-template>

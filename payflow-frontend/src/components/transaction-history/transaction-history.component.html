@@ -1,0 +1,208 @@
+<!-- transaction-history.component.html -->
+<div class="history-page">
+
+  <!-- ── Header ────────────────────────────────────────────────────────────── -->
+  <div class="page-header">
+    <div>
+      <h2 class="page-title">Transaction History</h2>
+      <p class="page-sub">
+        Complete audit trail with real-time status.
+        <span *ngIf="totalElements > 0">
+          Showing {{ startRecord }}–{{ endRecord }} of {{ totalElements }} transactions.
+        </span>
+      </p>
+    </div>
+    <button class="btn btn-ghost" (click)="loadTransactions()">↻ Refresh</button>
+  </div>
+
+  <!-- ── Filters ────────────────────────────────────────────────────────────── -->
+  <div class="filters-bar">
+    <div class="filter-group">
+      <label>Account</label>
+      <select [formControl]="accountIdControl">
+        <option *ngFor="let a of accountOptions" [value]="a.value">{{ a.label }}</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Status</label>
+      <select [formControl]="statusFilter">
+        <option value="">All Statuses</option>
+        <option *ngFor="let s of statusOptions.slice(1)" [value]="s">{{ s }}</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>Type</label>
+      <select [formControl]="typeFilter">
+        <option value="">All Types</option>
+        <option *ngFor="let t of typeOptions.slice(1)" [value]="t">{{ t }}</option>
+      </select>
+    </div>
+    <div class="filter-count" *ngIf="!isLoading">
+      {{ filteredTransactions.length }} result(s)
+    </div>
+  </div>
+
+  <!-- ── Table ─────────────────────────────────────────────────────────────── -->
+  <div class="panel">
+
+    <!-- Loading -->
+    <ng-container *ngIf="isLoading">
+      <div class="skeleton-row" *ngFor="let i of [1,2,3,4,5,6,7,8]"></div>
+    </ng-container>
+
+    <!-- Empty -->
+    <div class="empty-state" *ngIf="!isLoading && filteredTransactions.length === 0">
+      <div class="empty-icon">🔍</div>
+      <div class="empty-title">No transactions found</div>
+      <div class="empty-sub">Try adjusting your filters</div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-wrap" *ngIf="!isLoading && filteredTransactions.length > 0">
+      <table>
+        <thead>
+          <tr>
+            <th>Reference ID</th>
+            <th>Type</th>
+            <th>From</th>
+            <th>To</th>
+            <th>Amount</th>
+            <th>Status</th>
+            <th>Date</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr
+            *ngFor="let txn of filteredTransactions"
+            (click)="openDetail(txn)"
+            class="clickable-row"
+          >
+            <td><span class="ref-code">{{ txn.referenceId }}</span></td>
+            <td><span class="type-tag type-{{ txn.type }}">{{ txn.type }}</span></td>
+            <td class="account-cell">{{ txn.accountId }}</td>
+            <td class="account-cell">{{ txn.toAccountId ?? '—' }}</td>
+            <td>
+              <span [class.debit]="isDebit(txn.type)" [class.credit]="!isDebit(txn.type)">
+                {{ isDebit(txn.type) ? '−' : '+' }}{{ formatCurrency(txn.amount, txn.currency) }}
+              </span>
+            </td>
+            <td>
+              <span class="status-chip status-{{ txn.status }}">{{ txn.status }}</span>
+            </td>
+            <td class="date-cell">{{ txn.createdAt | date:'dd MMM yy, HH:mm' }}</td>
+            <td (click)="$event.stopPropagation()">
+              <button
+                *ngIf="txn.status === 'COMPLETED'"
+                class="btn-action"
+                (click)="openDetail(txn)"
+              >
+                View
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination" *ngIf="totalPages > 1">
+      <span class="page-info">Page {{ page + 1 }} of {{ totalPages }}</span>
+      <div class="page-controls">
+        <button class="page-btn" [disabled]="page === 0" (click)="goToPage(0)">«</button>
+        <button class="page-btn" [disabled]="page === 0" (click)="goToPage(page - 1)">‹</button>
+        <button
+          *ngFor="let p of pages.slice(
+            Math.max(0, page - 2),
+            Math.min(totalPages, page + 3)
+          )"
+          class="page-btn"
+          [class.active]="p === page"
+          (click)="goToPage(p)"
+        >{{ p + 1 }}</button>
+        <button class="page-btn" [disabled]="page >= totalPages - 1" (click)="goToPage(page + 1)">›</button>
+        <button class="page-btn" [disabled]="page >= totalPages - 1" (click)="goToPage(totalPages - 1)">»</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Transaction Detail Modal ──────────────────────────────────────────────── -->
+<div class="modal-backdrop" [class.open]="showModal" (click)="closeModal()">
+  <div class="modal" (click)="$event.stopPropagation()" *ngIf="selectedTxn">
+
+    <div class="modal-head">
+      <div>
+        <h3 class="modal-title">{{ selectedTxn.type }} Transaction</h3>
+        <code class="modal-ref">{{ selectedTxn.referenceId }}</code>
+      </div>
+      <button class="btn-close" (click)="closeModal()">✕</button>
+    </div>
+
+    <div class="detail-list">
+      <div class="detail-row">
+        <span class="dl">Status</span>
+        <span class="dv">
+          <span class="status-chip status-{{ selectedTxn.status }}">{{ selectedTxn.status }}</span>
+        </span>
+      </div>
+      <div class="detail-row">
+        <span class="dl">Amount</span>
+        <span class="dv amount-large"
+          [class.debit]="isDebit(selectedTxn.type)"
+          [class.credit]="!isDebit(selectedTxn.type)">
+          {{ formatCurrency(selectedTxn.amount, selectedTxn.currency) }}
+        </span>
+      </div>
+      <div class="detail-row">
+        <span class="dl">Currency</span>
+        <span class="dv">{{ selectedTxn.currency }}</span>
+      </div>
+      <div class="detail-row">
+        <span class="dl">From Account</span>
+        <span class="dv mono">{{ selectedTxn.accountId }}</span>
+      </div>
+      <div class="detail-row" *ngIf="selectedTxn.toAccountId">
+        <span class="dl">To Account</span>
+        <span class="dv mono">{{ selectedTxn.toAccountId }}</span>
+      </div>
+      <div class="detail-row" *ngIf="selectedTxn.description">
+        <span class="dl">Description</span>
+        <span class="dv">{{ selectedTxn.description }}</span>
+      </div>
+      <div class="detail-row" *ngIf="selectedTxn.failureReason">
+        <span class="dl">Failure Reason</span>
+        <span class="dv error-text">{{ selectedTxn.failureReason }}</span>
+      </div>
+      <div class="detail-row">
+        <span class="dl">Created</span>
+        <span class="dv">{{ selectedTxn.createdAt | date:'dd MMM yyyy, HH:mm:ss' }}</span>
+      </div>
+      <div class="detail-row" *ngIf="selectedTxn.processedAt">
+        <span class="dl">Processed</span>
+        <span class="dv">{{ selectedTxn.processedAt | date:'dd MMM yyyy, HH:mm:ss' }}</span>
+      </div>
+      <div class="detail-row">
+        <span class="dl">Transaction ID</span>
+        <span class="dv mono small">{{ selectedTxn.id }}</span>
+      </div>
+      <div class="detail-row">
+        <span class="dl">Version</span>
+        <span class="dv mono small">{{ selectedTxn.version }} (optimistic lock)</span>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" (click)="closeModal()">Close</button>
+      <button
+        class="btn btn-reverse"
+        *ngIf="selectedTxn.status === 'COMPLETED'"
+        [disabled]="isReversing"
+        (click)="reverseTransaction()"
+      >
+        <span class="spinner-sm" *ngIf="isReversing"></span>
+        {{ isReversing ? 'Reversing...' : 'Reverse Transaction' }}
+      </button>
+    </div>
+  </div>
+</div>

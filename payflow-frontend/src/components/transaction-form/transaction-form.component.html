@@ -1,0 +1,140 @@
+<!-- transaction-form.component.html -->
+<div class="form-container">
+  <div class="form-header">
+    <h2>New Transaction</h2>
+    <p class="subtitle">
+      Each request includes an auto-generated
+      <code class="mono">Idempotency-Key</code> to prevent duplicate processing.
+    </p>
+  </div>
+
+  <!-- Global form-level errors -->
+  <div class="form-error-banner" *ngIf="form.errors && form.touched">
+    <span *ngIf="formError('selfTransfer')" class="error-msg">
+      ⚠ {{ formError('selfTransfer') }}
+    </span>
+    <span *ngIf="formError('toAccountRequired')" class="error-msg">
+      ⚠ {{ formError('toAccountRequired') }}
+    </span>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+
+    <!-- Transaction Type -->
+    <div class="field-group">
+      <label>TRANSACTION TYPE</label>
+      <div class="type-grid">
+        <button
+          *ngFor="let t of transactionTypes"
+          type="button"
+          class="type-btn"
+          [class.selected]="form.get('type')?.value === t"
+          (click)="form.get('type')?.setValue(t)"
+        >
+          <span class="type-icon">
+            <ng-container [ngSwitch]="t">
+              <span *ngSwitchCase="'DEBIT'">→</span>
+              <span *ngSwitchCase="'CREDIT'">←</span>
+              <span *ngSwitchCase="'TRANSFER'">⇄</span>
+              <span *ngSwitchCase="'REFUND'">↩</span>
+            </ng-container>
+          </span>
+          {{ t }}
+        </button>
+      </div>
+    </div>
+
+    <!-- From Account -->
+    <div class="field-group">
+      <label for="accountId">FROM ACCOUNT *</label>
+      <select id="accountId" formControlName="accountId">
+        <option *ngFor="let acc of accounts" [value]="acc.id">
+          {{ acc.label }}
+        </option>
+      </select>
+      <span class="field-error" *ngIf="fieldError('accountId')">
+        ⚠ {{ fieldError('accountId') }}
+      </span>
+    </div>
+
+    <!-- To Account (Transfer only) -->
+    <div class="field-group" *ngIf="isTransfer">
+      <label for="toAccountId">TO ACCOUNT *</label>
+      <select id="toAccountId" formControlName="toAccountId"
+              [class.invalid]="fieldError('toAccountId')">
+        <option value="">— Select destination account —</option>
+        <option *ngFor="let acc of accounts" [value]="acc.id">
+          {{ acc.label }}
+        </option>
+      </select>
+      <span class="field-error" *ngIf="fieldError('toAccountId')">
+        ⚠ {{ fieldError('toAccountId') }}
+      </span>
+    </div>
+
+    <!-- Amount + Currency -->
+    <div class="field-row">
+      <div class="field-group flex-2">
+        <label for="amount">AMOUNT *</label>
+        <input
+          id="amount"
+          type="number"
+          formControlName="amount"
+          placeholder="0.00"
+          min="0.01"
+          max="1000000"
+          step="0.01"
+          [class.invalid]="fieldError('amount')"
+        />
+        <span class="field-error" *ngIf="fieldError('amount')">
+          ⚠ {{ fieldError('amount') }}
+        </span>
+      </div>
+      <div class="field-group flex-1">
+        <label for="currency">CURRENCY</label>
+        <select id="currency" formControlName="currency">
+          <option *ngFor="let c of currencies" [value]="c">{{ c }}</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Description -->
+    <div class="field-group">
+      <label for="description">DESCRIPTION <span class="optional">(optional)</span></label>
+      <input
+        id="description"
+        type="text"
+        formControlName="description"
+        placeholder="Payment for..."
+        maxlength="255"
+      />
+      <span class="char-count">
+        {{ form.get('description')?.value?.length || 0 }} / 255
+      </span>
+    </div>
+
+    <!-- Idempotency Key display -->
+    <div class="idempotency-banner">
+      <span class="idem-label">Idempotency-Key</span>
+      <code class="idem-key">{{ idempotencyKey }}</code>
+      <button type="button" class="btn-refresh-key" (click)="generateIdempotencyKey()"
+              title="Generate new key">↻</button>
+    </div>
+
+    <!-- Actions -->
+    <div class="form-actions">
+      <button type="button" class="btn btn-ghost" (click)="onReset()">
+        Clear
+      </button>
+      <button
+        type="submit"
+        class="btn btn-primary"
+        [disabled]="isSubmitting"
+      >
+        <span class="spinner" *ngIf="isSubmitting"></span>
+        <span>{{ isSubmitting ? 'Processing...' : 'Process Transaction' }}</span>
+      </button>
+    </div>
+
+  </form>
+</div>
