@@ -136,16 +136,6 @@ payment-system/
 │   ├── components/         ← Dashboard, Form, History
 │   ├── services/           ← API calls + notifications
 │   └── interceptors/       ← HTTP retry + tracking
-└── docker-compose.yml
-```
 
----
 
-## Docker (Optional)
-```bash
-docker-compose up --build
-```
 
----
-
-*Submitted by **Atul Sharma** — Spring Boot 3.2 + Angular 17 + PostgreSQL 15*
